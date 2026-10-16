@@ -4,7 +4,7 @@ QWidget { background: #18181c; color: #eeeef2; font-family: 'Malgun Gothic'; fon
 QLabel { background: transparent; }
 QLabel#muted { color: #a5a5b3; }
 QLabel#brand { font-size: 20px; font-weight: bold; padding-right: 6px; }
-QLabel#brandMark { background: #8b6de9; color: white; border-radius: 8px; font-size: 21px; font-weight: bold; }
+QLabel#brandMark { background: transparent; }
 QLabel#landingTitle { font-size: 25px; font-weight: bold; padding-bottom: 7px; }
 QLabel#dropTitle { font-size: 18px; font-weight: bold; }
 QLabel#section { font-size: 13px; font-weight: bold; }

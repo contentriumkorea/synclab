@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = []
+datas = [('synclab/assets', 'synclab/assets')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('av')
@@ -32,6 +32,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='SyncLab',
+    icon='synclab/assets/app-icon.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

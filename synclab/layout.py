@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLabel,QPushButto
  QSplitter,QFrame,QProgressBar,QScrollArea,QSlider,QStackedWidget,QSizePolicy)
 from .export import FPS_CHOICES
 from .timeline import Timeline
+from .branding import app_icon
 
 
 def label(text,name=None):
@@ -37,7 +38,10 @@ def build_ui(self):
     layout.setContentsMargins(0,0,0,0)
     layout.setSpacing(0)
     header,row=bar('appHeader')
-    mark=label('S','brandMark')
+    mark=label('','brandMark')
+    mark.setPixmap(app_icon().pixmap(64,64))
+    mark.setScaledContents(True)
+    mark.setAccessibleName('SyncLab')
     mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
     mark.setFixedSize(32,32)
     row.addWidget(mark)

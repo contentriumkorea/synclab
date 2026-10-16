@@ -18,6 +18,7 @@ from .interchange import read_timeline, decode_clip, display_offsets, retain_unm
 from .style import STYLE
 from .workers import Worker
 from .version import VERSION
+from .branding import app_icon
 
 
 class MainWindow(QMainWindow):
@@ -35,6 +36,7 @@ class MainWindow(QMainWindow):
         self._preview_dir=tempfile.TemporaryDirectory(prefix="synclab-preview-")
         self._preview_count=0
         self.setWindowTitle(f'SyncLab {VERSION}')
+        self.setWindowIcon(app_icon())
         self.resize(1400,900)
         self.setMinimumSize(1040,740)
         self.setAcceptDrops(True)

@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFont
 from PySide6.QtCore import QProcess
 from .ui import MainWindow
+from .branding import app_icon
 
 
 def main():
@@ -18,6 +19,7 @@ def main():
             started,_=QProcess.startDetached(str(newer),sys.argv[1:],str(newer.parent))
             if started:return 0
     app.setApplicationName("SyncLab")
+    app.setWindowIcon(app_icon())
     app.setOrganizationName("SyncLab")
     app.setFont(QFont("Malgun Gothic",10))
     window=MainWindow()
