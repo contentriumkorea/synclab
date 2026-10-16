@@ -1,0 +1,3 @@
+SyncLab
+Copyright (c) 2026 Contentrium.
+Third-party components retain their respective licenses.
