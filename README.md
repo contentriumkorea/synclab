@@ -1,6 +1,12 @@
-# SyncLab
+# SyncForge
 
-영상의 카메라 소리와 외부 녹음을 비교해 프리미어용 타임라인을 정렬합니다. 원본 영상과 녹음은 수정하지 않습니다.
+![SyncForge 커버](docs/syncforge-cover.svg)
+
+영상의 카메라 소리와 외부 녹음을 비교해 프리미어용 타임라인을 정렬하는 독립 앱입니다. 기존 SyncLab의 새 표시 이름이며 원본 영상·녹음과 저장된 프로젝트는 그대로 유지됩니다.
+
+**[Windows · Mac 다운로드](https://github.com/contentriumkorea/synclab/releases/latest)** · [바로 사용하기](#프리미어에서-사용하기)
+
+설치 파일과 실행 파일에는 기존 업데이트 호환성을 위해 `SyncLab` 이름이 남아 있습니다.
 
 ## 다운로드 · 설치
 
@@ -57,3 +63,5 @@ Windows는 압축 안의 파일을 함께 유지해야 합니다. 이미 SyncLab
 - Windows 분석 캐시·업데이트: `%LOCALAPPDATA%/SyncLab`
 
 배포에 포함된 저작권·라이선스 고지는 `THIRD_PARTY.md`와 앱에 포함된 `LICENSES`를 참고하세요.
+
+[![CONTENTRIUM 홈페이지](https://img.shields.io/badge/CONTENTRIUM-홈페이지-181818?style=for-the-badge)](https://contentrium.com/)
