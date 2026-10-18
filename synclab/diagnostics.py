@@ -29,7 +29,7 @@ def run_smoke(app, window, xml_path, output):
     def qt_message(kind,context,message):
         if 'QAudioSink::start' in message and 'not supported' in message:errors.append(message)
         if previous_handler:previous_handler(kind,context,message)
-        else:sys.stderr.write(message+'\n')
+        elif sys.stderr:sys.stderr.write(message+'\n')
     previous_handler=qInstallMessageHandler(qt_message)
     window.player.errorOccurred.connect(lambda code,message:errors.append(message))
 
