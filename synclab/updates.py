@@ -7,11 +7,13 @@ import posixpath
 from pathlib import Path, PurePosixPath
 import re
 import stat
+import ssl
+import sys
 import subprocess
 import tempfile
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
-from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPSHandler
 import uuid
 import zipfile
 
@@ -51,7 +53,13 @@ def _open(url,opener):
     if not _allowed_url(url):raise ValueError('업데이트 주소가 올바르지 않습니다.')
     req=Request(url,headers={'User-Agent':'SyncLab/'+VERSION,'Accept':'application/vnd.github+json'})
     try:
-        return (opener or build_opener(_Redirects()).open)(req,timeout=20)
+        if opener is None:
+            handlers=[_Redirects()]
+            if sys.platform=='darwin':
+                import certifi
+                handlers.append(HTTPSHandler(context=ssl.create_default_context(cafile=certifi.where())))
+            opener=build_opener(*handlers).open
+        return opener(req,timeout=20)
     except HTTPError as exc:
         raise ValueError(f'GitHub 업데이트 확인/다운로드 실패 (HTTP {exc.code}). 잠시 후 다시 시도해 주세요.') from exc
     except (URLError,TimeoutError,OSError) as exc:

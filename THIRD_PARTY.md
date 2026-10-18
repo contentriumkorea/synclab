@@ -18,3 +18,6 @@ The application source is available in the accompanying source archive/repositor
 Full available license notices are collected in LICENSES, including LGPLv3 and GPLv3.
 Qt and FFmpeg libraries remain separate DLLs under _internal and can be replaced with
 compatible modified builds. No source media, user projects, or analysis cache is bundled.
+
+- certifi CA certificate bundle: Mozilla Public License 2.0; https://github.com/certifi/python-certifi .
+

@@ -31,7 +31,7 @@ def main():
     (source/'.gitignore').write_text('.venv/\n__pycache__/\n.pytest_cache/\nbuild/\ndist/\nvalidation/\nrecordings/\npublish/\n',encoding='utf-8')
     (source/'COPYRIGHT.txt').write_text('SyncLab\nCopyright (c) 2026 Contentrium.\nThird-party components retain their respective licenses.\n',encoding='utf-8')
     licenses=app/'LICENSES';licenses.mkdir(exist_ok=True)
-    for name in ['av','numpy','scipy','PySide6-Essentials','PySide6-Addons','shiboken6']:
+    for name in ['av','numpy','scipy','PySide6-Essentials','PySide6-Addons','shiboken6','certifi']:
         d=metadata.distribution(name)
         for path in d.files or []:
             lower=str(path).lower()
@@ -68,6 +68,7 @@ The application source is available in the accompanying source archive/repositor
 - PyInstaller bootloader: https://pyinstaller.org/ ; GPL with distribution exception.
 
 Full available license notices are collected in LICENSES, including LGPLv3 and GPLv3.
+The certifi CA certificate bundle retains the Mozilla Public License 2.0; https://github.com/certifi/python-certifi .
 Qt and FFmpeg libraries remain separate DLLs under _internal and can be replaced with
 compatible modified builds. No source media, user projects, or analysis cache is bundled.
 '''

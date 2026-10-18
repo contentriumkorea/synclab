@@ -35,7 +35,7 @@ def archive_app(bundle,output):
 
 def licenses_for(bundle):
     dest=bundle/'Contents/Resources/LICENSES';dest.mkdir(parents=True,exist_ok=True)
-    for name in ['av','numpy','scipy','PySide6-Essentials','PySide6-Addons','shiboken6']:
+    for name in ['av','numpy','scipy','PySide6-Essentials','PySide6-Addons','shiboken6','certifi']:
         distribution=metadata.distribution(name)
         for item in distribution.files or []:
             if any(key in str(item).lower() for key in ['license','copyright','copying']) and not str(item).endswith(('.py','.pyc')):

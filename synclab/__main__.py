@@ -25,9 +25,20 @@ def main():
     window=MainWindow()
     if len(sys.argv)==3 and sys.argv[1]=='--update-health-check':
         from .version import VERSION
-        Path(sys.argv[2]).write_text(json.dumps({'success':True,'version':VERSION}),encoding='utf-8')
+        report={'success':True,'version':VERSION}
+        if os.environ.get('SYNCLAB_UPDATE_HEALTH_NETWORK')=='1':
+            from .updates import fetch_latest
+            try:
+                info=fetch_latest('0.0.0')
+                report['update_asset']=info.url
+                if sys.platform=='darwin':
+                    import certifi
+                    report['certificate_bundle_present']=Path(certifi.where()).is_file()
+            except Exception as exc:
+                report.update(success=False,error=str(exc))
+        Path(sys.argv[2]).write_text(json.dumps(report),encoding='utf-8')
         window.close()
-        return 0
+        return 0 if report['success'] else 1
     window.show()
     if len(sys.argv)==4 and sys.argv[1]=='--smoke-test':
         from .diagnostics import run_smoke

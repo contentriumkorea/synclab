@@ -12,6 +12,14 @@ env={**os.environ,'QT_QPA_PLATFORM':'offscreen','PYTHONPATH':'','PYINSTALLER_RES
 health=folder/'health.json'
 subprocess.run([str(exe),'--update-health-check',str(health)],env=env,check=True,timeout=60)
 assert json.loads(health.read_text(encoding='utf-8'))['success']
+network_env={**env,'SYNCLAB_UPDATE_HEALTH_NETWORK':'1'}
+if sys.platform=='darwin':
+    network_env.update(SSL_CERT_FILE='/no-system-ca.pem',SSL_CERT_DIR='/no-system-ca')
+network_report=folder/'network-health.json'
+subprocess.run([str(exe),'--update-health-check',str(network_report)],env=network_env,check=True,timeout=60)
+network=json.loads(network_report.read_text(encoding='utf-8'))
+assert network['success'] and 'github.com/contentriumkorea/synclab/releases/download/' in network['update_asset']
+if sys.platform=='darwin':assert network['certificate_bundle_present']
 subprocess.run([str(exe),'--smoke-test',str(ROOT/'validation/ci-fixture/Groups.xml'),str(folder)],env=env,check=True,timeout=120)
 report=json.loads((folder/'startup-report.json').read_text(encoding='utf-8'))
 assert report['success'] and report['frozen']
