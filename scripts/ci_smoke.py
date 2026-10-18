@@ -21,7 +21,7 @@ for attempt in range(3):
     result=subprocess.run([str(exe),'--update-health-check',str(network_report)],env=network_env,timeout=60)
     network=json.loads(network_report.read_text(encoding='utf-8'))
     if result.returncode==0:break
-    print(f"Network health attempt {attempt+1}: {network.get('error', 'unknown error')}",flush=True)
+    print(f"Network health attempt {attempt+1}: {network.get('error', 'unknown error')!a}",flush=True)
     if attempt<2:time.sleep(3)
 assert result.returncode==0,network
 assert network['success'] and 'github.com/contentriumkorea/synclab/releases/download/' in network['update_asset']
