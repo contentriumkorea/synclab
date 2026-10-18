@@ -45,14 +45,8 @@ def licenses_for(bundle):
                     target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target)
     python_license=Path(sys.base_prefix)/'LICENSE.txt'
     if python_license.is_file():shutil.copyfile(python_license,dest/'Python.txt')
-    for name in ['lgpl-3.0','gpl-3.0']:
-        for attempt in range(3):
-            try:
-                with urlopen('https://www.gnu.org/licenses/'+name+'.txt',timeout=30) as response:
-                    (dest/(name.upper()+'.txt')).write_bytes(response.read())
-                break
-            except OSError:
-                if attempt==2:raise
+    for name in ['LGPL-3.0.txt','GPL-3.0.txt']:
+        shutil.copyfile(ROOT/'licenses'/name,dest/name)
     for name in ['README.md','THIRD_PARTY.md','COPYRIGHT.txt']:
         source=ROOT/name
         if source.is_file():shutil.copyfile(source,bundle/'Contents/Resources'/name)

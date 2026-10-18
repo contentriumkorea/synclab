@@ -24,7 +24,7 @@ def main():
     allow=[ROOT/'run_synclab.py',ROOT/'SyncLab.spec',ROOT/'requirements.txt',ROOT/'pytest.ini']
     allow+=sorted((ROOT/'synclab').glob('*.py'))+sorted((ROOT/'tests').glob('*.py'))
     allow+=sorted((ROOT/'synclab/assets').glob('*.png'))+sorted((ROOT/'synclab/assets').glob('*.ico'))+sorted((ROOT/'synclab/assets').glob('*.icns'))
-    allow+=[ROOT/p for p in ['scripts/package_distribution.py','scripts/package_macos.py','scripts/ci_fixture.py','scripts/ci_smoke.py','scripts/MacInstaller.swift','.github/workflows/packages.yml','docs/PUBLIC_CHANGES.md','docs/PUBLIC_README.md']]
+    allow+=[ROOT/p for p in ['scripts/package_distribution.py','scripts/package_macos.py','scripts/ci_fixture.py','scripts/ci_smoke.py','scripts/MacInstaller.swift','.github/workflows/packages.yml','docs/PUBLIC_CHANGES.md','docs/PUBLIC_README.md','licenses/LGPL-3.0.txt','licenses/GPL-3.0.txt']]
     for file in allow:
         dest=source/file.relative_to(ROOT);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(file,dest)
     (source/'README.md').write_text(PUBLIC_README,encoding='utf-8')
@@ -43,6 +43,7 @@ def main():
     if python_license.is_file():shutil.copyfile(python_license,licenses/'Python.txt')
     for filename,url in [('LGPL-3.0.txt','https://www.gnu.org/licenses/lgpl-3.0.txt'),('GPL-3.0.txt','https://www.gnu.org/licenses/gpl-3.0.txt')]:
         target=licenses/filename
+        if (ROOT/'licenses'/filename).is_file():shutil.copyfile(ROOT/'licenses'/filename,target)
         if not target.is_file():
             with urlopen(url,timeout=20) as response:target.write_bytes(response.read())
     import av
