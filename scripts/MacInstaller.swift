@@ -68,7 +68,7 @@ func verifiedInstall(archive: URL,digest: String,version: String,destination: UR
     try run(bundle.appendingPathComponent("Contents/MacOS/SyncLab").path,["--update-health-check",health.path],environment:env)
     guard let status=try JSONSerialization.jsonObject(with:Data(contentsOf:health)) as? [String:Any] else {throw InstallError.message("새 앱의 실행 검사 결과가 올바르지 않습니다.")}
     try require(status["success"] as? Bool==true && status["version"] as? String==version,"새 앱 실행 검사에 실패했습니다.")
-    try require(!NSWorkspace.shared.runningApplications.contains{$0.bundleURL?.standardizedFileURL==destination.standardizedFileURL},"SyncLab을 종료한 뒤 다시 설치해 주세요.")
+    try require(!NSWorkspace.shared.runningApplications.contains{$0.bundleURL?.standardizedFileURL==destination.standardizedFileURL},"SyncForge를 종료한 뒤 다시 설치해 주세요.")
     try fm.createDirectory(at:destination.deletingLastPathComponent(),withIntermediateDirectories:true)
     let pending=destination.deletingLastPathComponent().appendingPathComponent(".SyncLab-new-"+UUID().uuidString+".app")
     let backup=destination.deletingLastPathComponent().appendingPathComponent(".SyncLab-previous-"+UUID().uuidString+".app")
@@ -97,7 +97,7 @@ func latestInstall(destination: URL,progress: @escaping (String)->Void) async th
     }
     let allowed="https://github.com/\(repository)/releases/download/\(release.tag_name)/\(packageName)"
     try require(asset.browser_download_url==allowed && asset.size>0 && asset.size<=1024*1024*1024,"다운로드 정보가 올바르지 않습니다.")
-    progress("SyncLab \(release.tag_name) 다운로드 중… (\(asset.size/1024/1024) MB)")
+    progress("SyncForge \(release.tag_name) 다운로드 중… (\(asset.size/1024/1024) MB)")
     var downloadRequest=URLRequest(url:URL(string:allowed)!);downloadRequest.timeoutInterval=180
     let (archive,downloadResponse)=try await URLSession.shared.download(for:downloadRequest)
     defer {try? FileManager.default.removeItem(at:archive)}
@@ -120,14 +120,14 @@ if CommandLine.arguments.count==6 && CommandLine.arguments[1]=="--verify-install
 
 class InstallerDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
     var window:NSWindow!
-    let label=NSTextField(wrappingLabelWithString:"최신 SyncLab을 이 Mac의 사용자 응용 프로그램 폴더에 설치합니다.")
+    let label=NSTextField(wrappingLabelWithString:"최신 SyncForge를 이 Mac의 사용자 응용 프로그램 폴더에 설치합니다.")
     let progress=NSProgressIndicator()
     let button=NSButton(title:"설치",target:nil,action:nil)
     var installed:URL?
     func applicationDidFinishLaunching(_ notification:Notification) {
         window=NSWindow(contentRect:NSRect(x:0,y:0,width:500,height:245),styleMask:[.titled,.closable],backing:.buffered,defer:false)
-        window.title="SyncLab 설치";window.center();window.delegate=self
-        let title=NSTextField(labelWithString:"SyncLab")
+        window.title="SyncForge 설치";window.center();window.delegate=self
+        let title=NSTextField(labelWithString:"SyncForge")
         title.font=NSFont.boldSystemFont(ofSize:26);title.frame=NSRect(x:28,y:182,width:440,height:35)
         label.frame=NSRect(x:28,y:86,width:440,height:80)
         progress.frame=NSRect(x:28,y:70,width:440,height:15);progress.isIndeterminate=true;progress.style = .bar
@@ -144,7 +144,7 @@ class InstallerDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
                 let app=try await latestInstall(destination:destination) {text in DispatchQueue.main.async{self.label.stringValue=text}}
                 DispatchQueue.main.async {
                     self.installed=app;self.label.stringValue="설치 완료\n\(app.path)\n앱을 휴지통으로 옮기면 제거할 수 있습니다."
-                    self.button.title="SyncLab 열기";self.button.isEnabled=true;self.progress.stopAnimation(nil)
+                    self.button.title="SyncForge 열기";self.button.isEnabled=true;self.progress.stopAnimation(nil)
                 }
             } catch {DispatchQueue.main.async {
                 self.label.stringValue="설치 실패\n"+error.localizedDescription
