@@ -53,6 +53,8 @@ jobs:
       - name: Build
         run: python -m PyInstaller --noconfirm --distpath dist/native --workpath build/native SyncLab.spec
       - name: Native integration
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python scripts/ci_fixture.py
           python scripts/ci_smoke.py '${{ matrix.exe }}'
