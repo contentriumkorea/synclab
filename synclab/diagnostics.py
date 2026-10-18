@@ -7,6 +7,7 @@ import time
 import xml.etree.ElementTree as ET
 
 from PySide6.QtCore import QTimer, qVersion
+from PySide6.QtMultimedia import QMediaDevices
 
 from .interchange import read_timeline
 
@@ -74,6 +75,8 @@ def run_smoke(app, window, xml_path, output):
                 window.table.selectRow(window.clips.index(target))
                 window.preview_start.setValue(max(0,target.offset)+2)
                 window.audio_out.setVolume(0)
+                report['audio_hardware']=not QMediaDevices.defaultAudioOutput().isNull()
+                if not report['audio_hardware']:window.player.setAudioOutput(None)
                 window.preview()
                 stage='verify_playback'
             elif stage=='verify_playback':

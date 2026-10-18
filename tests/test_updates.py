@@ -2,10 +2,19 @@ import hashlib
 import io
 import json
 import zipfile
+import sys
+import platform
 from pathlib import Path
 import pytest
 
 from synclab import updates
+
+
+@pytest.fixture(autouse=True)
+def windows_distribution(monkeypatch):
+    # These fixtures exercise the existing Windows distribution on every CI host.
+    monkeypatch.setattr(sys,'platform','win32')
+    monkeypatch.setattr(platform,'machine',lambda:'AMD64')
 
 
 def archive(entries=None):

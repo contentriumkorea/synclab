@@ -21,7 +21,7 @@ def main():
     app.setApplicationName("SyncLab")
     app.setWindowIcon(app_icon())
     app.setOrganizationName("SyncLab")
-    app.setFont(QFont("Malgun Gothic",10))
+    app.setFont(QFont("Apple SD Gothic Neo" if sys.platform=='darwin' else "Malgun Gothic",10))
     window=MainWindow()
     if len(sys.argv)==3 and sys.argv[1]=='--update-health-check':
         from .version import VERSION

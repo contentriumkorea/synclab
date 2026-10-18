@@ -12,6 +12,7 @@ import numpy as np
 from .engine import check_cancel
 from .models import Clip, SAMPLE_RATE
 from .storage import atomic_write
+from .platforms import audio_cache
 
 EXTENSIONS = {".mp4", ".mov", ".mxf", ".mkv", ".avi", ".mts", ".m2ts", ".wav",
               ".mp3", ".flac", ".m4a", ".aac", ".aif", ".aiff", ".ogg", ".webm"}
@@ -26,8 +27,7 @@ def audio_peak(audio):
 
 
 def _cache_paths(path,fingerprint):
-    directory=Path(os.environ.get('SYNCLAB_CACHE_DIR') or
-                   Path(os.environ.get('LOCALAPPDATA',tempfile.gettempdir()))/'SyncLab'/'audio-cache-v1')
+    directory=audio_cache()
     directory.mkdir(parents=True,exist_ok=True)
     key=hashlib.sha256(json.dumps([str(path),fingerprint,SAMPLE_RATE,1],sort_keys=True).encode()).hexdigest()
     return directory/(key+'.f32'),directory/(key+'.json')

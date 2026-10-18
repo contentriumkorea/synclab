@@ -3,11 +3,12 @@ from fractions import Fraction
 from pathlib import Path
 import tempfile
 import os
+import sys
 import numpy as np
 from PySide6.QtCore import Qt, QUrl, QProcess
-from PySide6.QtGui import QColor, QShortcut, QKeySequence
+from PySide6.QtGui import QColor, QShortcut, QKeySequence, QAction
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
-from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTableWidgetItem
+from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTableWidgetItem, QSystemTrayIcon, QMenu
 from .engine import synchronize, check_cancel
 from .export import export_xml, export_csv
 from .layout import build_ui
@@ -49,9 +50,26 @@ class MainWindow(QMainWindow):
         self.player.errorOccurred.connect(lambda error,message:self.notice("비교 청취: "+message))
         self.player.positionChanged.connect(self._playhead)
         self.preview_origin=0.
-        for keys,slot in [("Ctrl+O",self.open_dialog),("Ctrl+S",self.save_dialog),("Ctrl+I",self.add_dialog),("Escape",self.cancel_work)]:
+        for keys,slot in [(QKeySequence.StandardKey.Open,self.open_dialog),(QKeySequence.StandardKey.Save,self.save_dialog),("Ctrl+I",self.add_dialog),("Escape",self.cancel_work)]:
             QShortcut(QKeySequence(keys),self,activated=slot)
         self.refresh()
+        if sys.platform=='darwin' and QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray=QSystemTrayIcon(app_icon(),self)
+            self.tray.setToolTip('SyncLab')
+            menu=QMenu(self)
+            show=QAction('SyncLab 열기',menu)
+            show.triggered.connect(self._show_window)
+            menu.addAction(show)
+            quit_action=QAction('완전 종료',menu)
+            quit_action.triggered.connect(self.close)
+            menu.addAction(quit_action)
+            self.tray.setContextMenu(menu)
+            self.tray.show()
+
+    def _show_window(self):
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
 
     @property
     def fps(self):

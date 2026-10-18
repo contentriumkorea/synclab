@@ -1,5 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
+import sys
+from pathlib import Path
+from synclab.version import VERSION
+if sys.platform=='darwin':
+    from PIL import Image
+    Image.open('synclab/assets/app-icon.png').save('synclab/assets/app-icon.icns',format='ICNS')
 
 datas = [('synclab/assets', 'synclab/assets')]
 binaries = []
@@ -32,7 +38,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='SyncLab',
-    icon='synclab/assets/app-icon.ico',
+    icon='synclab/assets/app-icon.icns' if sys.platform=='darwin' else 'synclab/assets/app-icon.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -53,3 +59,8 @@ coll = COLLECT(
     upx_exclude=[],
     name='SyncLab',
 )
+if sys.platform=='darwin':
+    app = BUNDLE(coll,name='SyncLab.app',icon='synclab/assets/app-icon.icns',
+        bundle_identifier='com.contentrium.synclab',
+        info_plist={'CFBundleShortVersionString':VERSION,'CFBundleVersion':VERSION,
+                    'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'15.0'})

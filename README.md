@@ -1,53 +1,59 @@
 # SyncLab
 
-Windows에서 영상과 외부 녹음을 소리로 맞추는 프로그램입니다.
+영상의 카메라 소리와 외부 녹음을 비교해 프리미어용 타임라인을 정렬합니다. 원본 영상과 녹음은 수정하지 않습니다.
 
-## 설치
+## 다운로드 · 설치
 
-1. [다운로드](https://github.com/contentriumkorea/synclab/releases/latest)에서 `SyncLab-Windows-x64.zip`을 받습니다.
-2. 압축을 모두 풀고 `SyncLab/SyncLab.exe`를 실행합니다. `_internal` 폴더가 함께 있어야 합니다.
-3. 다음 버전부터는 상단 **업데이트** 버튼으로 확인·설치·재시작할 수 있습니다.
+| 운영체제 | 다운로드 | 설치 방법 |
+| --- | --- | --- |
+| Mac · 애플 실리콘(M 시리즈) | [맥 설치 프로그램](https://github.com/contentriumkorea/synclab/releases/latest/download/SyncLab-Install-macOS-arm64.dmg) | DMG를 열고 **SyncLab 설치** 실행 |
+| Mac · 인텔 | [맥 설치 프로그램](https://github.com/contentriumkorea/synclab/releases/latest/download/SyncLab-Install-macOS-x64.dmg) | DMG를 열고 **SyncLab 설치** 실행 |
+| Windows · 64비트 | [Windows 다운로드](https://github.com/contentriumkorea/synclab/releases/latest/download/SyncLab-Windows-x64.zip) | 압축을 모두 풀고 `SyncLab.exe` 실행 |
 
-## 프리미어 사용 순서
+[전체 다운로드 및 변경 내용](https://github.com/contentriumkorea/synclab/releases/latest)
 
-1. 카메라 영상과 외부 오디오를 시퀀스에 넣습니다.
-2. 프리미어 **파일 → 내보내기 → Final Cut Pro XML**로 저장합니다.
-3. SyncLab에서 XML을 열고 오디오 준비가 끝나면 **자동 싱크**를 누릅니다.
-4. 그룹·파형·미일치·드리프트 경고를 확인합니다. 필요하면 수동으로 보정합니다.
+맥은 **macOS 15 이상**을 지원합니다. 맥 설치 프로그램은 실행 시 최신 정식 버전을 내려받아 검증하고, 사용자 **응용 프로그램** 폴더(`~/Applications/SyncLab.app`)에 설치합니다. 설치 후에는 Dock에 고정할 수 있으며 메뉴 막대에서 창 열기와 종료를 사용할 수 있습니다. 제거하려면 설치된 앱을 휴지통으로 옮깁니다. 캐시와 저장한 프로젝트는 별도로 유지됩니다.
+
+**맥 앱과 설치 프로그램에는 Apple 개발자 공증이 없습니다.** 처음 실행할 때 macOS가 차단할 수 있으며 시스템 설정 → 개인정보 보호 및 보안에서 해당 앱의 실행 허용이 필요할 수 있습니다.
+
+Windows는 압축 안의 파일을 함께 유지해야 합니다. 이미 SyncLab을 사용 중이면 상단 **업데이트** 버튼으로 새 버전을 설치할 수 있습니다.
+
+## 프리미어에서 사용하기
+
+1. 영상과 외부 오디오를 프리미어 시퀀스에 넣습니다.
+2. **파일 → 내보내기 → Final Cut Pro XML**로 저장합니다.
+3. SyncLab에서 **XML 열기**를 누르고 오디오 준비를 기다립니다.
+4. **자동 싱크**를 실행하고 파형·그룹·확인 필요 상태를 확인합니다.
 5. **XML 저장**으로 다른 이름으로 저장합니다.
-6. 프리미어 **파일 → 가져오기**에서 결과 XML을 열고 새 Synced 시퀀스를 확인합니다.
+6. 프리미어의 **파일 → 가져오기**로 결과 XML을 열고 새 시퀀스를 확인합니다.
 
-원본 미디어는 기존 폴더에 유지됩니다. XML은 배치 정보이며 영상 파일이 아닙니다.
+맥에서도 같은 순서로 사용합니다. 다른 컴퓨터에서 내보낸 XML의 미디어 경로가 달라졌다면 **원본 위치 다시 지정**으로 연결하세요. XML은 원본 미디어를 포함하지 않습니다.
 
-## 그룹과 주의할 점
+## 주요 기능
 
-- 공통 소리가 확인되는 클립끼리는 그룹 안에서 정렬합니다.
-- 기준 음원과 연결되지 않는 별도 그룹도 내부 정렬하되 그룹 사이의 실제 시간은 추정하지 않습니다.
-- 어떤 소스와도 맞지 않는 클립은 결과 끝에 보존합니다.
-- 모든 녹음의 완벽한 싱크를 보장하지 않습니다. 드리프트·구간별 편차·미일치는 직접 확인하세요.
-- 시간 늘이기/줄이기, 자동 카메라 컷, Premiere 내부 확장 패널은 제공하지 않습니다.
-- XML이 지원하지 않는 효과는 Premiere에서 변환 경고가 나타날 수 있습니다.
-- 파일당 최대 6시간, 최대 200개 소스입니다. 분석 캐시는 `%LOCALAPPDATA%/SyncLab/audio-cache-v1`에 보관합니다.
+- 여러 카메라·녹음의 공통 소리를 찾아 그룹 안에서 정렬
+- 원래 트랙, 연결, 소스 구간을 유지하는 XML 입출력
+- 비교 듣기, 프레임 단위 수동 보정, 전체 빈 구간 제거
+- 작업을 저장하고 다시 여는 프로젝트 기능
+- 파일 검증과 실행 검사를 거치는 업데이트
 
-## 업데이트
+## 결과 확인
 
-**업데이트**를 누르면 이 저장소의 최신 버전을 확인합니다. 새 버전을 선택하면
-GitHub의 SHA256 정보로 ZIP을 검증하고 별도 폴더에 풀어 실행 검사 후 다시 시작합니다.
-미저장 작업은 먼저 저장/취소할 수 있습니다. 실패하면 현재 작업과 기존 앱을 유지합니다.
-업데이트 파일은 `%LOCALAPPDATA%/SyncLab/updates`에 보관합니다.
-이전 실행 파일을 열어도 검증된 새 버전으로 연결됩니다. 자동 백그라운드 다운로드는 하지 않습니다.
+점수는 성공 확률이 아닙니다. 낮은 점수라도 여러 구간에서 검증된 클립은 배치하고 **확인 필요**를 표시합니다. 반복음·무음·공통 소리가 부족한 클립은 자동 정렬되지 않을 수 있습니다. 맞지 않는 클립은 끝에 보존합니다.
 
-## 개발
+서로 겹치는 소리가 없는 그룹 사이의 실제 시간 관계는 추정하지 않습니다. 각 그룹을 별도 영역에 배치하므로 그룹 간 위치, 드리프트 경고와 중요한 구간은 직접 확인하세요. 원본 속도를 늘이거나 줄이는 보정과 자동 카메라 컷은 제공하지 않습니다.
 
-Python 3.12 / Windows:
+파일당 최대 6시간, 최대 200개 소스를 지원합니다. 분석은 로컬에서 이루어지며 미디어를 업로드하지 않습니다. 업데이트를 확인하거나 설치할 때만 GitHub에 연결합니다.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest pyinstaller
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m synclab
-.\.venv\Scripts\python.exe -m PyInstaller --noconfirm SyncLab.spec
-```
+## 업데이트 · 작업 보관
 
-버전은 `synclab/version.py`에서 관리합니다. 배포 ZIP 이름은 업데이트 호환성을 위해 유지합니다.
-서드파티 고지와 라이선스는 `THIRD_PARTY.md` 및 배포본의 `LICENSES`를 참고하세요.
+**업데이트** → 설치 확인 → 재시작 순서입니다. 미저장 작업을 먼저 저장할 수 있고, 검증이나 새 앱 실행에 실패하면 기존 앱을 유지합니다. 프로젝트를 열거나 파형만 다시 읽으면 저장된 배치를 유지합니다. 새 분석을 적용하려면 **자동 싱크**를 다시 누르세요.
+
+저장 위치:
+
+- 프로젝트와 XML: 저장 대화상자에서 지정한 폴더
+- Mac 분석 캐시: `~/Library/Caches/SyncLab/audio-cache-v1`
+- Mac 업데이트: `~/Library/Application Support/SyncLab/updates`
+- Windows 분석 캐시·업데이트: `%LOCALAPPDATA%/SyncLab`
+
+배포에 포함된 저작권·라이선스 고지는 `THIRD_PARTY.md`와 앱에 포함된 `LICENSES`를 참고하세요.

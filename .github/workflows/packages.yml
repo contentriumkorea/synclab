@@ -1,0 +1,104 @@
+name: Build SyncLab
+on:
+  push:
+    branches: [main]
+    paths: ['synclab/**', 'tests/**', 'scripts/**', 'SyncLab.spec', 'requirements.txt', '.github/workflows/packages.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: synclab-packages-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: macOS-arm64
+            os: macos-15
+            arch: arm64
+            exe: dist/native/SyncLab.app/Contents/MacOS/SyncLab
+          - id: macOS-x64
+            os: macos-15-intel
+            arch: x64
+            exe: dist/native/SyncLab.app/Contents/MacOS/SyncLab
+          - id: Windows-x64
+            os: windows-2022
+            arch: x64
+            exe: dist/native/SyncLab/SyncLab.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+      MACOSX_DEPLOYMENT_TARGET: '15.0'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.arch }}
+      - name: Dependencies
+        run: |
+          python -m pip install --only-binary=:all: -r requirements.txt
+          python -m pip install pytest pyinstaller pillow
+      - name: Tests
+        run: |
+          mkdir -p validation
+          python -m pytest -q | tee validation/pytest.txt
+      - name: Build
+        run: python -m PyInstaller --noconfirm --distpath dist/native --workpath build/native SyncLab.spec
+      - name: Native integration
+        run: |
+          python scripts/ci_fixture.py
+          python scripts/ci_smoke.py '${{ matrix.exe }}'
+      - name: Package Mac and verify native installer
+        if: runner.os == 'macOS'
+        run: python scripts/package_macos.py --app dist/native/SyncLab.app
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        run: python scripts/package_distribution.py --app dist/native/SyncLab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.id }}
+          path: |
+            publish/*/*.zip
+            publish/*/*.dmg
+            publish/*/SHA256SUMS*.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checks-${{ matrix.id }}
+          path: |
+            validation/pytest.txt
+            validation/ci-smoke/
+            validation/macOS-*.json
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          path: packages
+          merge-multiple: true
+      - name: Publish verified packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python -c "exec(open('synclab/version.py').read()); print(VERSION)")
+          python -c "from pathlib import Path; import hashlib; p=Path('packages'); files=sorted([*p.glob('*.zip'),*p.glob('*.dmg')]); (p/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(f.read_bytes()).hexdigest()+'  '+f.name+'\n' for f in files),encoding='ascii')"
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Version already exists; increment VERSION before publishing.' >&2
+            exit 1
+          fi
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "SyncLab $VERSION" --notes-file docs/PUBLIC_CHANGES.md
+          gh release upload "v$VERSION" packages/* --repo "$GITHUB_REPOSITORY"
+          gh release edit "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --latest

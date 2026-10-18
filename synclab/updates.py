@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import os
+import posixpath
 from pathlib import Path, PurePosixPath
 import re
 import stat
@@ -16,7 +17,8 @@ import zipfile
 
 from .engine import check_cancel
 from .storage import atomic_write
-from .version import VERSION, REPOSITORY, WINDOWS_ASSET
+from .version import VERSION, REPOSITORY
+from .platforms import distribution_asset, application_data, bundle_name, executable_in
 
 MAX_DOWNLOAD=1024**3
 MAX_EXPANDED=3*1024**3
@@ -29,7 +31,7 @@ def version_tuple(value):
 
 
 def update_root():
-    return Path(os.environ.get('LOCALAPPDATA',Path.home()/'.local/share'))/'SyncLab'/'updates'
+    return application_data()/'updates'
 
 
 def _allowed_url(url):
@@ -66,6 +68,7 @@ class UpdateInfo:
 
 
 def fetch_latest(current=VERSION,opener=None):
+    asset_name=distribution_asset()
     with _open(f'https://api.github.com/repos/{REPOSITORY}/releases/latest',opener) as response:
         raw=response.read(1024**2+1)
     if len(raw)>1024**2:raise ValueError('업데이트 응답이 너무 큽니다.')
@@ -74,9 +77,9 @@ def fetch_latest(current=VERSION,opener=None):
         latest=doc['tag_name'].removeprefix('v')
         if doc.get('draft') or doc.get('prerelease'):raise ValueError('정식 배포 버전이 아닙니다.')
         if version_tuple(latest)<=version_tuple(current):return None
-        asset=next(a for a in doc['assets'] if a.get('name')==WINDOWS_ASSET)
+        asset=next(a for a in doc['assets'] if a.get('name')==asset_name)
         u=urlsplit(asset['browser_download_url'])
-        valid_paths={f'/{REPOSITORY}/releases/download/{tag}/{WINDOWS_ASSET}' for tag in [latest,'v'+latest]}
+        valid_paths={f'/{REPOSITORY}/releases/download/{tag}/{asset_name}' for tag in [latest,'v'+latest]}
         if not _allowed_url(asset['browser_download_url']) or u.hostname!='github.com' or u.path not in valid_paths or u.query or u.fragment:
             raise ValueError('업데이트 파일의 저장소/주소가 올바르지 않습니다.')
         digest=asset.get('digest') or ''
@@ -92,12 +95,25 @@ def _members(z):
     if len(members)>20000 or sum(x.file_size for x in members)>MAX_EXPANDED:
         raise ValueError('업데이트 압축 크기/파일 수가 제한을 초과합니다.')
     reserved={'con','prn','aux','nul',*[f'com{i}' for i in range(1,10)],*[f'lpt{i}' for i in range(1,10)]}
+    root=bundle_name()
+    links={m.filename.rstrip('/') for m in members if stat.S_ISLNK(m.external_attr>>16)}
     for m in members:
         parts=m.filename.rstrip('/').split('/')
-        if ('\\' in m.filename or not parts or parts[0]!='SyncLab' or
+        if ('\\' in m.filename or not parts or parts[0]!=root or
             any(p in {'','..','.'} or ':' in p or p.endswith((' ','.')) or p.split('.')[0].lower() in reserved for p in parts) or
-            stat.S_ISLNK(m.external_attr>>16)):
+            any('/'.join(parts[:i]) in links for i in range(1,len(parts)))):
             raise ValueError('업데이트 압축에 안전하지 않은 경로가 있습니다.')
+        mode=m.external_attr>>16
+        if stat.S_ISLNK(mode):
+            if root!='SyncLab.app' or m.file_size>4096:raise ValueError('허용하지 않는 업데이트 링크입니다.')
+            try:link=z.read(m).decode('utf-8')
+            except UnicodeDecodeError as exc:raise ValueError('업데이트 링크가 올바르지 않습니다.') from exc
+            resolved=posixpath.normpath(posixpath.join(posixpath.dirname(m.filename),link))
+            if (not link or '\\' in link or ':' in link or '\x00' in link or link.startswith('/') or
+                not resolved.startswith(root+'/')):
+                raise ValueError('업데이트 링크가 앱 밖을 가리킵니다.')
+        elif stat.S_IFMT(mode) not in {0,stat.S_IFREG,stat.S_IFDIR}:
+            raise ValueError('업데이트 압축에 특수 파일이 있습니다.')
         key='/'.join(parts).casefold()
         if key in seen:raise ValueError('업데이트 압축에 중복 경로가 있습니다.')
         seen.add(key)
@@ -105,14 +121,15 @@ def _members(z):
 
 
 def check_executable(exe):
-    report=Path(exe).parent/'health.json'
     env={**os.environ,'QT_QPA_PLATFORM':'offscreen','PYTHONPATH':'','PYINSTALLER_RESET_ENVIRONMENT':'1'}
     if os.name=='nt':env['PATH']=os.environ.get('SystemRoot',r'C:\Windows')+r'\System32'
     try:
-        result=subprocess.run([str(exe),'--update-health-check',str(report)],env=env,capture_output=True,
-                              timeout=45,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-        health=json.loads(report.read_text())
-        if result.returncode or not health.get('success'):raise ValueError('실행 검사 실패')
+        with tempfile.TemporaryDirectory(prefix='synclab-health-') as temporary:
+            report=Path(temporary)/'health.json'
+            result=subprocess.run([str(exe),'--update-health-check',str(report)],env=env,capture_output=True,
+                                  timeout=45,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            health=json.loads(report.read_text(encoding='utf-8'))
+            if result.returncode or not health.get('success'):raise ValueError('실행 검사 실패')
     except (OSError,ValueError,subprocess.TimeoutExpired) as exc:
         raise ValueError('새 버전 실행 검사에 실패했습니다. 현재 버전은 유지합니다.') from exc
 
@@ -137,27 +154,39 @@ def install_update(info,cancelled=lambda:False,progress=lambda p,m:None,root=Non
             members=list(_members(z))
             for index,(m,relative) in enumerate(members):
                 check_cancel(cancelled)
+                if stat.S_ISLNK(m.external_attr>>16):continue
                 target=stage/Path(str(relative))
                 if not target.resolve().is_relative_to(stage):raise ValueError('잘못된 압축 경로입니다.')
                 if m.is_dir():target.mkdir(parents=True,exist_ok=True);continue
                 target.parent.mkdir(parents=True,exist_ok=True)
                 with z.open(m) as src,target.open('wb') as dst:
                     while chunk:=src.read(256*1024):check_cancel(cancelled);dst.write(chunk)
+                if bundle_name()=='SyncLab.app':target.chmod(0o755 if m.external_attr>>16&0o111 else 0o644)
                 progress(75+round(20*(index+1)/max(1,len(members))),'업데이트 파일 확인 중…')
-        exe=stage/'SyncLab'/'SyncLab.exe'
-        if not exe.is_file() or not (stage/'SyncLab'/'_internal').is_dir():raise ValueError('업데이트 실행 파일/런타임이 없습니다.')
+            for m,relative in members:
+                if stat.S_ISLNK(m.external_attr>>16):
+                    check_cancel(cancelled)
+                    (stage/Path(str(relative))).symlink_to(z.read(m).decode('utf-8'))
+            for m,relative in members:
+                try:safe=(stage/Path(str(relative))).resolve().is_relative_to(stage/bundle_name())
+                except (OSError,RuntimeError):safe=False
+                if not safe:raise ValueError('업데이트 링크가 앱 밖을 가리키거나 순환합니다.')
+        exe=executable_in(stage)
+        runtime=stage/'SyncLab.app/Contents/Frameworks' if bundle_name()=='SyncLab.app' else stage/'SyncLab/_internal'
+        if not exe.is_file() or not runtime.is_dir():raise ValueError('업데이트 실행 파일/런타임이 없습니다.')
         progress(97,'새 버전 실행 검사 중…')
         (validator or check_executable)(exe)
         with exe.open('rb') as src:exe_hash=hashlib.file_digest(src,'sha256').hexdigest()
         receipt={'version':info.version,'archive_sha256':info.sha256,'executable_sha256':exe_hash}
-        atomic_write(stage/'SyncLab'/'installed.json',json.dumps(receipt).encode())
+        if bundle_name()=='SyncLab':atomic_write(stage/'SyncLab'/'installed.json',json.dumps(receipt).encode())
         check_cancel(cancelled)
         directory=info.version+'-'+uuid.uuid4().hex[:8]
         destination=versions/directory;destination.mkdir()
-        os.replace(stage/'SyncLab',destination/'SyncLab')
+        os.replace(stage/bundle_name(),destination/bundle_name())
+        atomic_write(destination/'installed.json',json.dumps(receipt).encode())
         atomic_write(root/'current.json',json.dumps({'version':info.version,'directory':directory}).encode())
         progress(100,'업데이트 준비 완료 · 새 버전으로 다시 시작합니다.')
-        return destination/'SyncLab'/'SyncLab.exe'
+        return executable_in(destination)
 
 
 def find_installed_update(current=VERSION,root=None):
@@ -167,9 +196,12 @@ def find_installed_update(current=VERSION,root=None):
         version=pointer['version'];directory=pointer['directory']
         if version_tuple(version)<=version_tuple(current):return None
         if not isinstance(directory,str) or not re.fullmatch(re.escape(version)+r'-[0-9a-f]{8}',directory):return None
-        folder=root/'versions'/directory/'SyncLab';exe=folder/'SyncLab.exe'
+        destination=root/'versions'/directory
+        folder=destination/bundle_name();exe=executable_in(destination)
         if not folder.resolve().is_relative_to(root/'versions'):return None
-        receipt=json.loads((folder/'installed.json').read_text())
+        receipt_path=destination/'installed.json'
+        if not receipt_path.is_file() and bundle_name()=='SyncLab':receipt_path=folder/'installed.json'
+        receipt=json.loads(receipt_path.read_text(encoding='utf-8'))
         if receipt['version']!=version:return None
         with exe.open('rb') as src:
             if hashlib.file_digest(src,'sha256').hexdigest()!=receipt['executable_sha256']:return None
