@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 ROOT=Path(__file__).resolve().parents[1]
 exe=Path(sys.argv[1]).resolve()
@@ -16,8 +17,13 @@ network_env={**env,'SYNCLAB_UPDATE_HEALTH_NETWORK':'1'}
 if sys.platform=='darwin':
     network_env.update(SSL_CERT_FILE='/no-system-ca.pem',SSL_CERT_DIR='/no-system-ca')
 network_report=folder/'network-health.json'
-subprocess.run([str(exe),'--update-health-check',str(network_report)],env=network_env,check=True,timeout=60)
-network=json.loads(network_report.read_text(encoding='utf-8'))
+for attempt in range(3):
+    result=subprocess.run([str(exe),'--update-health-check',str(network_report)],env=network_env,timeout=60)
+    network=json.loads(network_report.read_text(encoding='utf-8'))
+    if result.returncode==0:break
+    print(f"Network health attempt {attempt+1}: {network.get('error', 'unknown error')}",flush=True)
+    if attempt<2:time.sleep(3)
+assert result.returncode==0,network
 assert network['success'] and 'github.com/contentriumkorea/synclab/releases/download/' in network['update_asset']
 if sys.platform=='darwin':assert network['certificate_bundle_present']
 subprocess.run([str(exe),'--smoke-test',str(ROOT/'validation/ci-fixture/Groups.xml'),str(folder)],env=env,check=True,timeout=120)

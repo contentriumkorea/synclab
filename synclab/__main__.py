@@ -18,7 +18,7 @@ def main():
             os.environ['PYINSTALLER_RESET_ENVIRONMENT']='1'
             started,_=QProcess.startDetached(str(newer),sys.argv[1:],str(newer.parent))
             if started:return 0
-    app.setApplicationName("SyncLab")
+    app.setApplicationName("SyncForge")
     app.setWindowIcon(app_icon())
     app.setOrganizationName("SyncLab")
     app.setFont(QFont("Apple SD Gothic Neo" if sys.platform=='darwin' else "Malgun Gothic",10))
