@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    if: "!contains(github.event.head_commit.message, '[publish only]')"
     strategy:
       fail-fast: false
       matrix:
@@ -94,6 +95,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(python -c "exec(open('synclab/version.py').read()); print(VERSION)")
+          python -c "from pathlib import Path; import shutil; p=Path('packages'); files=[f for f in p.rglob('*') if f.is_file()]; [(shutil.move(str(f),str(p/f.name))) for f in files if f.parent!=p]"
           python -c "from pathlib import Path; import hashlib; p=Path('packages'); files=sorted([*p.glob('*.zip'),*p.glob('*.dmg')]); (p/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(f.read_bytes()).hexdigest()+'  '+f.name+'\n' for f in files),encoding='ascii')"
           if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo 'Version already exists; increment VERSION before publishing.' >&2

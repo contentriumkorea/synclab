@@ -1,0 +1,56 @@
+name: Publish verified SyncLab packages
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-verified.yml']
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERIFIED_RUN: '39110257803'
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify all native builds passed
+        run: |
+          gh run view "$VERIFIED_RUN" --repo "$GITHUB_REPOSITORY" --json jobs > jobs.json
+          python -c "import json; j=[j for j in json.load(open('jobs.json'))['jobs'] if j['name'].startswith('build (')]; assert len(j)==3 and all(x['conclusion']=='success' for x in j),j"
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ env.VERIFIED_RUN }}
+          github-token: ${{ github.token }}
+          pattern: packages-*
+          path: packages
+          merge-multiple: true
+      - name: Prepare verified files and complete draft
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,shutil,zipfile
+          exec(Path('synclab/version.py').read_text())
+          out=Path('upload');out.mkdir()
+          for f in Path('packages').rglob('*'):
+              if f.is_file() and (f.suffix in {'.zip','.dmg'} or f.name.startswith('SHA256SUMS')):
+                  assert not (out/f.name).exists(),f.name
+                  shutil.copyfile(f,out/f.name)
+          required=['SyncLab-Windows-x64.zip','SyncLab-macOS-arm64.zip','SyncLab-macOS-x64.zip','SyncLab-Install-macOS-arm64.dmg','SyncLab-Install-macOS-x64.dmg',f'SyncLab-{VERSION}-source.zip']
+          assert all((out/n).is_file() and (out/n).stat().st_size>0 for n in required)
+          archive=out/f'SyncLab-{VERSION}-source.zip'
+          replacement=out/'source-staging.zip'
+          workflow=f'SyncLab-{VERSION}/.github/workflows/packages.yml'
+          with zipfile.ZipFile(archive) as original,zipfile.ZipFile(replacement,'w',zipfile.ZIP_DEFLATED) as updated:
+              for item in original.infolist():
+                  updated.writestr(item,Path('.github/workflows/packages.yml').read_bytes() if item.filename==workflow else original.read(item))
+          replacement.replace(archive)
+          (out/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256((out/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in sorted(required)),encoding='ascii')
+          PY
+          VERSION=$(python -c "exec(open('synclab/version.py').read()); print(VERSION)")
+          gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" --json isDraft > draft.json
+          python -c "import json; assert json.load(open('draft.json'))['isDraft'], 'Do not overwrite a published version'"
+          gh release upload "v$VERSION" upload/* --clobber --repo "$GITHUB_REPOSITORY"
+          gh release edit "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --latest
