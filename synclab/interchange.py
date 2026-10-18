@@ -101,7 +101,7 @@ def retain_unmatched(clips, placements, scores, warnings, reference_id,group_ids
     for c in clips:
         c.score = scores.get(c.id, 0.)
         c.sync_group=(group_ids or {}).get(c.id,1 if c.id in placements else 0)
-        c.warnings = [w for w in c.warnings if not any(t in w for t in ['드리프트','오프셋 편차','매칭 경로','자동 일치','다시 분석','별도 싱크 그룹'])]
+        c.warnings = [w for w in c.warnings if not any(t in w for t in ['드리프트','오프셋 편차','매칭 경로','자동 일치','다시 분석','별도 싱크 그룹','낮은 파형 점수'])]
         c.warnings.extend(warnings.get(c.id, []))
         if c.id in placements:
             c.offset = placements[c.id]

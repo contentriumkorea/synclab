@@ -111,3 +111,31 @@ def test_same_envelope_unrelated_audio_is_still_rejected():
     a=clip(rng.normal(size=len(env))*env,'a')
     b=clip(rng.normal(size=len(env))*env,'b')
     assert match_pair(a,b) is None
+
+
+def test_consistent_low_score_recording_is_aligned_despite_independent_noise():
+    source=sound(70,951)
+    camera=source[17*SR:57*SR]+2*sound(40,952)
+    result=match_pair(clip(source,'recorder'),clip(camera,'camera'))
+    assert result is not None
+    assert result.offset==pytest.approx(17.,abs=.003)
+    assert result.score<.4
+    synced=synchronize([clip(source,'recorder'),clip(camera,'camera')],'recorder')
+    assert any('추가 구간 검증' in warning for warning in synced.warnings['camera'])
+
+
+def test_low_score_repeated_recording_remains_ambiguous():
+    pattern=sound(40,951)
+    camera=pattern+2*sound(40,952)
+    assert match_pair(clip(np.tile(pattern,3),'recorder'),clip(camera,'camera')) is None
+
+
+def test_three_shared_bursts_do_not_validate_an_otherwise_unrelated_recording():
+    source=sound(70,951);data=source[17*SR:57*SR];noise=sound(40,952)
+    # Preserve an energy envelope and three convincing probe windows, while the
+    # rest has unrelated waveform phase. Additional windows must reject it.
+    camera=3*data*np.random.default_rng(31).choice([-1,1],len(data))
+    for time in [3.7,18.5,33.3]:
+        start=round(time*SR)
+        camera[start:start+3*SR]=data[start:start+3*SR]+3*noise[start:start+3*SR]
+    assert match_pair(clip(source,'recorder'),clip(camera,'camera')) is None

@@ -128,6 +128,42 @@ def _refine(a, b, rough, cancelled):
     return float(np.median(offsets[mask])),float(np.median(strengths[mask])),hi-lo,drift_ms,jitter_ms
 
 
+def _verify_low_score(a,b,refined,cancelled):
+    """Require repeated, distinctive local waveform evidence for a weak score."""
+    offset,fine,overlap,drift,jitter=refined
+    if fine<.22 or overlap<8 or abs(drift)>30 or jitter>10:
+        return False
+    sr=SAMPLE_RATE
+    lo,hi=max(0.,-offset),min(len(b.audio)/sr,len(a.audio)/sr-offset)
+    window=min(3.,(hi-lo)/4);radius=.08
+    original_window=min(3.,(hi-lo)/3)
+    center=lo+(hi-lo-original_window)/2
+    slope=drift/(overlap*1000)
+    confirmed=[];strong=[]
+    for fraction in [.05,.18,.31,.44,.57,.70,.83,.95]:
+        check_cancel(cancelled)
+        tb=lo+(hi-lo-window)*fraction;ib=round(tb*sr);n=round(window*sr)
+        predicted=offset+slope*(tb-center)
+        left=max(0,round((tb+predicted-radius)*sr))
+        right=min(len(a.audio),round((tb+predicted+window+radius)*sr))
+        x=a.audio[left:right].astype(np.float64);y=b.audio[ib:ib+n].astype(np.float64)
+        if len(x)<len(y) or len(y)!=n:continue
+        y-=y.mean();ey=np.dot(y,y)
+        if ey<1e-9:continue
+        corr=signal.correlate(x,y,mode='valid',method='fft')
+        cs=np.concatenate(([0.],np.cumsum(x)));cs2=np.concatenate(([0.],np.cumsum(x*x)))
+        ex=cs2[n:]-cs2[:-n]-(cs[n:]-cs[:-n])**2/n
+        scores=np.abs(corr)/np.sqrt(np.maximum(ex*ey,1e-18))
+        index=int(np.argmax(scores));actual=(left+index-ib)/sr
+        distant=np.abs((left+np.arange(len(scores))-ib)/sr-actual)>.025
+        competitor=float(np.max(scores[distant],initial=0.))
+        if scores[index]>=.10 and abs(actual-predicted)<=.012 and scores[index]-competitor>=.02:
+            confirmed.append(tb)
+            if scores[index]>=.20:strong.append(tb)
+    return (len(confirmed)>=6 and np.ptp(confirmed)>=.6*(hi-lo-window)
+            and len(strong)>=3 and np.ptp(strong)>=.3*(hi-lo-window))
+
+
 def match_pair(a: Clip, b: Clip, cancelled=lambda: False):
     check_cancel(cancelled)
     matches = []
@@ -137,7 +173,7 @@ def match_pair(a: Clip, b: Clip, cancelled=lambda: False):
             continue
         offset, fine, overlap, drift, jitter = refined
         score = .7*fine + .3*max(0, coarse)
-        if score >= .4:
+        if score >= .4 or (score>=.25 and coarse>=.22 and _verify_low_score(a,b,refined,cancelled)):
             matches.append(PairMatch(a.id, b.id, offset+a.audio_start-b.audio_start,
                                      min(score, 1.), overlap, drift,jitter))
     if not matches:
@@ -184,6 +220,8 @@ def synchronize(clips, reference_id, progress=lambda p, m: None, cancelled=lambd
             placements[node]=placements[parent]+delta
             scores[node]=-weight;group_ids[node]=group
             inherited=list(warnings.get(parent,[]))
+            if -weight<.4:
+                inherited.append('낮은 파형 점수: 추가 구간 검증으로 배치했습니다. 싱크를 확인하세요.')
             if abs(drift)>10:
                 inherited.append(f'시간 드리프트 약 {abs(drift):.0f} ms — 구간별 싱크를 확인하세요.')
             if jitter>10:
