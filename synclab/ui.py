@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         self._close_pending=False
         self._preview_dir=tempfile.TemporaryDirectory(prefix="synclab-preview-")
         self._preview_count=0
-        self.setWindowTitle(f'SyncLab {VERSION}')
+        self.setWindowTitle(f'SyncForge {VERSION}')
         self.setWindowIcon(app_icon())
         self.resize(1400,900)
         self.setMinimumSize(1040,740)
@@ -55,9 +55,9 @@ class MainWindow(QMainWindow):
         self.refresh()
         if sys.platform=='darwin' and QSystemTrayIcon.isSystemTrayAvailable():
             self.tray=QSystemTrayIcon(app_icon(),self)
-            self.tray.setToolTip('SyncLab')
+            self.tray.setToolTip('SyncForge')
             menu=QMenu(self)
-            show=QAction('SyncLab 열기',menu)
+            show=QAction('SyncForge 열기',menu)
             show.triggered.connect(self._show_window)
             menu.addAction(show)
             quit_action=QAction('완전 종료',menu)
@@ -188,11 +188,11 @@ class MainWindow(QMainWindow):
 
     def _offer_update(self,info):
         if info is None:
-            self.notice(f'최신 버전입니다 · SyncLab {VERSION}')
-            QMessageBox.information(self,'업데이트',f'최신 버전입니다.\nSyncLab {VERSION}')
+            self.notice(f'최신 버전입니다 · SyncForge {VERSION}')
+            QMessageBox.information(self,'업데이트',f'최신 버전입니다.\nSyncForge {VERSION}')
             return
         answer=QMessageBox.question(self,'업데이트',
-            f'SyncLab {info.version}을 설치하고 다시 시작할까요?\n현재 버전: {VERSION}\n\n'+info.notes,
+            f'SyncForge {info.version}을 설치하고 다시 시작할까요?\n현재 버전: {VERSION}\n\n'+info.notes,
             QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.Cancel,QMessageBox.StandardButton.Cancel)
         if answer!=QMessageBox.StandardButton.Yes or not self.confirm_replace():return
         from .updates import install_update
@@ -543,7 +543,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self,'프리미어에서 사용하기',
             '1. 프리미어 시퀀스에 영상과 오디오를 소스별 트랙으로 배치합니다.\n'
             '2. 파일 → 내보내기 → Final Cut Pro XML을 선택합니다.\n'
-            '3. SyncLab에서 XML을 열고 자동 싱크를 실행합니다.\n'
+            '3. SyncForge에서 XML을 열고 자동 싱크를 실행합니다.\n'
             '4. 타임라인에서 결과를 확인하고 XML 저장을 누릅니다.\n'
             '5. 프리미어에서 결과 XML을 가져오면 새 시퀀스가 생깁니다.\n\n'
             '클립을 클릭하면 수동 보정과 비교 듣기를 사용할 수 있습니다.\n'
@@ -591,7 +591,7 @@ class MainWindow(QMainWindow):
 
     def save_dialog(self):
         if self.busy or not self.clips: return False
-        path,_=QFileDialog.getSaveFileName(self,"프로젝트 저장",str(self.project_path or "Untitled.synclab"),"SyncLab 프로젝트 (*.synclab)")
+        path,_=QFileDialog.getSaveFileName(self,"프로젝트 저장",str(self.project_path or "Untitled.synclab"),"SyncForge 프로젝트 (*.synclab)")
         if not path: return False
         try:
             self.save_to(path)
@@ -624,7 +624,7 @@ class MainWindow(QMainWindow):
 
     def open_dialog(self):
         if self.busy or not self.confirm_replace(): return
-        path,_=QFileDialog.getOpenFileName(self,"프로젝트 열기","","SyncLab 프로젝트 (*.synclab)")
+        path,_=QFileDialog.getOpenFileName(self,"프로젝트 열기","","SyncForge 프로젝트 (*.synclab)")
         if path:
             try: self.load_from(path)
             except (OSError,ValueError) as exc: self.notice(str(exc))
