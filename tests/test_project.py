@@ -44,6 +44,7 @@ def test_preview_aligns_reference_left_selected_right(tmp_path):
     render_preview(a,b,out,start=3.,duration=3.)
     with wave.open(str(out),"rb") as f:
         assert f.getnchannels() == 2
+        rate=f.getframerate()
         decoded = np.frombuffer(f.readframes(f.getnframes()), dtype="<i2").reshape(-1,2)
-    assert len(decoded) == 12000
+    assert len(decoded) == 3*rate
     assert np.max(np.abs(decoded[:,0].astype(float)-decoded[:,1])) <= 1

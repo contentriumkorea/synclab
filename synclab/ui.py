@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
         self.resize(1400,900)
         self.setMinimumSize(1040,740)
         self.setAcceptDrops(True)
-        self.setStyleSheet(STYLE)
+        self.setStyleSheet(STYLE.replace('Malgun Gothic','Apple SD Gothic Neo').replace('Consolas','Menlo') if sys.platform=='darwin' else STYLE)
         build_ui(self)
         self.player=QMediaPlayer(self)
         self.audio_out=QAudioOutput(self)

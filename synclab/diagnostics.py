@@ -6,7 +6,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 
-from PySide6.QtCore import QTimer, qVersion
+from PySide6.QtCore import QTimer, qVersion, qInstallMessageHandler
 from PySide6.QtMultimedia import QMediaDevices
 
 from .interchange import read_timeline
@@ -26,10 +26,16 @@ def run_smoke(app, window, xml_path, output):
     timer=QTimer(window)
     timer.setInterval(50)
     errors=[]
+    def qt_message(kind,context,message):
+        if 'QAudioSink::start' in message and 'not supported' in message:errors.append(message)
+        if previous_handler:previous_handler(kind,context,message)
+        else:sys.stderr.write(message+'\n')
+    previous_handler=qInstallMessageHandler(qt_message)
     window.player.errorOccurred.connect(lambda code,message:errors.append(message))
 
     def finish(code,error=None):
         timer.stop()
+        qInstallMessageHandler(previous_handler)
         report['elapsed_seconds']=round(time.monotonic()-start,3)
         report['success']=code==0
         if error: report['error']=str(error)

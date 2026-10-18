@@ -2,6 +2,7 @@ import io
 import math
 import wave
 import numpy as np
+from scipy.signal import resample_poly
 
 from .models import SAMPLE_RATE
 from .storage import atomic_write, protect_sources
@@ -24,11 +25,14 @@ def render_preview(reference, selected, path, start=0., duration=15.):
             stereo[dst:dst+count,channel] = data*scale
     if not np.any(stereo):
         raise ValueError("선택한 시간에 비교할 오디오가 없습니다.")
+    # CoreAudio devices need a standard playback rate; analysis remains 4 kHz.
+    output_rate=48000
+    stereo=resample_poly(stereo,output_rate//SAMPLE_RATE,1,axis=0)
     buf = io.BytesIO()
     with wave.open(buf,"wb") as out:
         out.setnchannels(2)
         out.setsampwidth(2)
-        out.setframerate(SAMPLE_RATE)
+        out.setframerate(output_rate)
         out.writeframes((np.clip(stereo,-1,1)*32767).astype("<i2").tobytes())
     atomic_write(path,buf.getvalue())
     return path
