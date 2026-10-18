@@ -46,12 +46,18 @@ def _allowed_url(url):
 class _Redirects(HTTPRedirectHandler):
     def redirect_request(self,req,fp,code,msg,headers,newurl):
         if not _allowed_url(newurl):raise ValueError('GitHub 외부의 다운로드 주소는 허용하지 않습니다.')
-        return super().redirect_request(req,fp,code,msg,headers,newurl)
+        redirected=super().redirect_request(req,fp,code,msg,headers,newurl)
+        if redirected is not None and urlsplit(newurl).hostname!=urlsplit(req.full_url).hostname:
+            redirected.remove_header('Authorization')
+        return redirected
 
 
 def _open(url,opener):
     if not _allowed_url(url):raise ValueError('업데이트 주소가 올바르지 않습니다.')
-    req=Request(url,headers={'User-Agent':'SyncLab/'+VERSION,'Accept':'application/vnd.github+json'})
+    headers={'User-Agent':'SyncLab/'+VERSION,'Accept':'application/vnd.github+json'}
+    if os.environ.get('SYNCLAB_UPDATE_HEALTH_NETWORK')=='1' and os.environ.get('GITHUB_TOKEN') and urlsplit(url).hostname=='api.github.com':
+        headers['Authorization']='Bearer '+os.environ['GITHUB_TOKEN']
+    req=Request(url,headers=headers)
     try:
         if opener is None:
             handlers=[_Redirects()]
