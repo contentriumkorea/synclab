@@ -139,3 +139,11 @@ def test_three_shared_bursts_do_not_validate_an_otherwise_unrelated_recording():
         start=round(time*SR)
         camera[start:start+3*SR]=data[start:start+3*SR]+3*noise[start:start+3*SR]
     assert match_pair(clip(source,'recorder'),clip(camera,'camera')) is None
+
+
+def test_unstable_strong_edge_does_not_claim_low_score_verification(monkeypatch):
+    from synclab.models import PairMatch
+    monkeypatch.setattr('synclab.engine.match_pair',lambda a,b,cancelled:PairMatch(a.id,b.id,0,.5,10,0,50))
+    result=synchronize([clip(sound(10),'a'),clip(sound(10),'b')],'a')
+    assert any('편차' in w for w in result.warnings['b'])
+    assert not any('추가 구간 검증' in w for w in result.warnings['b'])

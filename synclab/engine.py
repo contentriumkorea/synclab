@@ -210,17 +210,17 @@ def synchronize(clips, reference_id, progress=lambda p, m: None, cancelled=lambd
             if other not in placements:
                 # Prefer stable recordings as bridges over sources with a time jump.
                 quality=score*(.7 if jitter>40 else 1.)
-                heapq.heappush(queue,(-min(scores[node],quality),node,other,delta,drift,jitter))
+                heapq.heappush(queue,(-min(scores[node],quality),node,other,delta,drift,jitter,score<.4))
     def expand(anchor,group):
         push(anchor)
         while queue:
             check_cancel(cancelled)
-            weight,parent,node,delta,drift,jitter=heapq.heappop(queue)
+            weight,parent,node,delta,drift,jitter,verified_low_score=heapq.heappop(queue)
             if node in placements:continue
             placements[node]=placements[parent]+delta
             scores[node]=-weight;group_ids[node]=group
             inherited=list(warnings.get(parent,[]))
-            if -weight<.4:
+            if verified_low_score:
                 inherited.append('낮은 파형 점수: 추가 구간 검증으로 배치했습니다. 싱크를 확인하세요.')
             if abs(drift)>10:
                 inherited.append(f'시간 드리프트 약 {abs(drift):.0f} ms — 구간별 싱크를 확인하세요.')
