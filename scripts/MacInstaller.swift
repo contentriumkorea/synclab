@@ -22,6 +22,7 @@ func require(_ condition: Bool,_ text: String) throws { if !condition {throw Ins
     if let env=environment {p.environment=env}
     let out=Pipe(),err=Pipe();p.standardOutput=out;p.standardError=err
     try p.run()
+    DispatchQueue.global().asyncAfter(deadline:.now()+60) {if p.isRunning {p.terminate()}}
     let bytes=out.fileHandleForReading.readDataToEndOfFile()
     let errors=err.fileHandleForReading.readDataToEndOfFile()
     p.waitUntilExit()
@@ -51,13 +52,13 @@ func verifiedInstall(archive: URL,digest: String,version: String,destination: UR
     // macOS libarchive refuses writes through archive symlinks.
     try run("/usr/bin/tar",["-xf",archive.path,"-C",stage.path,"--no-same-owner"])
     let bundle=stage.appendingPathComponent("SyncLab.app")
-    let children=fm.enumerator(at:bundle,includingPropertiesForKeys:[.isSymbolicLinkKey])!
+    guard let children=fm.enumerator(at:bundle,includingPropertiesForKeys:[.isSymbolicLinkKey]) else {throw InstallError.message("앱 폴더를 읽을 수 없습니다.")}
     for case let child as URL in children {
         let resolved=child.resolvingSymlinksInPath().standardizedFileURL.path
         try require(resolved.hasPrefix(bundle.path+"/"),"앱 밖을 가리키는 링크가 있습니다.")
     }
     let plist=try Data(contentsOf:bundle.appendingPathComponent("Contents/Info.plist"))
-    let doc=try PropertyListSerialization.propertyList(from:plist,format:nil) as! [String:Any]
+    guard let doc=try PropertyListSerialization.propertyList(from:plist,format:nil) as? [String:Any] else {throw InstallError.message("앱 정보가 올바르지 않습니다.")}
     try require(doc["CFBundleIdentifier"] as? String=="com.contentrium.synclab" &&
         doc["CFBundleShortVersionString"] as? String==version,"다른 앱 또는 버전이 다운로드됐습니다.")
     try run("/usr/bin/codesign",["--verify","--deep","--strict",bundle.path])
@@ -65,7 +66,7 @@ func verifiedInstall(archive: URL,digest: String,version: String,destination: UR
     var env=ProcessInfo.processInfo.environment
     env["QT_QPA_PLATFORM"]="offscreen";env["PYTHONPATH"]="";env["PYINSTALLER_RESET_ENVIRONMENT"]="1"
     try run(bundle.appendingPathComponent("Contents/MacOS/SyncLab").path,["--update-health-check",health.path],environment:env)
-    let status=try JSONSerialization.jsonObject(with:Data(contentsOf:health)) as! [String:Any]
+    guard let status=try JSONSerialization.jsonObject(with:Data(contentsOf:health)) as? [String:Any] else {throw InstallError.message("새 앱의 실행 검사 결과가 올바르지 않습니다.")}
     try require(status["success"] as? Bool==true && status["version"] as? String==version,"새 앱 실행 검사에 실패했습니다.")
     try require(!NSWorkspace.shared.runningApplications.contains{$0.bundleURL?.standardizedFileURL==destination.standardizedFileURL},"SyncLab을 종료한 뒤 다시 설치해 주세요.")
     try fm.createDirectory(at:destination.deletingLastPathComponent(),withIntermediateDirectories:true)

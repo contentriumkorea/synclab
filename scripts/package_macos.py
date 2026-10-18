@@ -18,6 +18,7 @@ from urllib.request import urlopen
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from synclab.version import VERSION
 from synclab.platforms import distribution_asset
+from synclab.updates import UpdateInfo, install_update, find_installed_update, check_executable
 
 
 def archive_app(bundle,output):
@@ -66,6 +67,14 @@ def main():
     subprocess.run(['codesign','--force','--deep','--sign','-',str(bundle)],check=True)
     subprocess.run(['codesign','--verify','--deep','--strict',str(bundle)],check=True)
     package=output/distribution_asset();archive_app(bundle,package)
+    with package.open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
+    info=UpdateInfo(VERSION,'https://github.com/contentriumkorea/synclab/releases/download/v'+VERSION+'/'+package.name,
+                    package.stat().st_size,digest,'Native verification')
+    with tempfile.TemporaryDirectory(prefix='synclab-updater-check-') as folder:
+        installed=install_update(info,root=folder,opener=lambda *a,**kw:package.open('rb'))
+        assert find_installed_update('0.0.0',root=folder)==installed
+        check_executable(installed)
+        subprocess.run(['codesign','--verify','--deep','--strict',str(installed.parents[2])],check=True)
     cpu='arm64' if platform.machine()=='arm64' else 'x64'
     installer=ROOT/'build'/('installer-'+cpu)/'SyncLab 설치.app'
     macos=installer/'Contents/MacOS';macos.mkdir(parents=True,exist_ok=True)
@@ -78,11 +87,15 @@ def main():
             'LSMinimumSystemVersion':'15.0','NSHighResolutionCapable':True},f)
     executable=macos/'SyncLabInstaller'
     subprocess.run(['swiftc','-O','-swift-version','5',str(ROOT/'scripts/MacInstaller.swift'),'-o',str(executable),
-                    '-framework','AppKit','-framework','CryptoKit'],check=True)
+                    '-target',platform.machine()+'-apple-macosx15.0','-framework','AppKit','-framework','CryptoKit'],check=True)
     subprocess.run(['codesign','--force','--deep','--sign','-',str(installer)],check=True)
     digest=hashlib.file_digest(package.open('rb'),'sha256').hexdigest()
     with tempfile.TemporaryDirectory(prefix='synclab-installer-check-') as folder:
+        bad=subprocess.run([str(executable),'--verify-install',str(package),'0'*64,VERSION,str(Path(folder)/'SyncLab.app')],capture_output=True,timeout=60)
+        assert bad.returncode!=0 and not (Path(folder)/'SyncLab.app').exists()
         subprocess.run([str(executable),'--verify-install',str(package),digest,VERSION,str(Path(folder)/'SyncLab.app')],check=True,timeout=180)
+        subprocess.run([str(executable),'--verify-install',str(package),digest,VERSION,str(Path(folder)/'SyncLab.app')],check=True,timeout=180)
+    assert not Path(folder).exists()
     dmg=output/f'SyncLab-Install-macOS-{cpu}.dmg'
     subprocess.run(['hdiutil','create','-volname','SyncLab 설치','-srcfolder',str(installer.parent),
                     '-ov','-format','UDZO',str(dmg)],check=True)
@@ -92,7 +105,8 @@ def main():
             f.write(digest+'  '+path.name+'\n')
     (ROOT/'validation'/f'macOS-{cpu}-package.json').write_text(json.dumps({'success':True,'version':VERSION,
         'platform':platform.platform(),'architecture':platform.machine(),'installer_bytes':dmg.stat().st_size,
-        'app_bytes':package.stat().st_size,'codesign':'ad-hoc; not notarized','installer_verified':True}),encoding='utf-8')
+        'app_bytes':package.stat().st_size,'codesign':'ad-hoc; not notarized','installer_verified':True,
+        'updater_verified':True,'bad_digest_rejected':True,'reinstall_verified':True,'temporary_install_removed':True}),encoding='utf-8')
 
 
 if __name__=='__main__':main()
